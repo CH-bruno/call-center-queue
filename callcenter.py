@@ -69,7 +69,43 @@ class CallCenter(cmd.Cmd):
 
     def do_reject(self, arg):
         """Operator rejects a call"""
-        pass
+        operator_id = arg.strip()
+
+        if operator_id not in self.operators:
+            return
+
+        operator = self.operators[operator_id]
+
+        if operator["state"] != "ringing":
+            return
+
+        rejected_call = operator["call"]
+
+        # Reject current call
+        operator["state"] = "available"
+        operator["call"] = None
+        print(f"Call {rejected_call} rejected by operator {operator_id}")
+
+        # Priority: deliver next call from queue
+        if self.queue:
+            next_call = self.queue.popleft()
+            operator["state"] = "ringing"
+            operator["call"] = next_call
+            print(f"Call {next_call} ringing for operator {operator_id}")
+            return
+
+        # Try another available operator
+        for other_id, other_operator in self.operators.items():
+            if other_id != operator_id and other_operator["state"] == "available":
+                other_operator["state"] = "ringing"
+                other_operator["call"] = rejected_call
+                print(f"Call {rejected_call} ringing for operator {other_id}")
+                return
+
+        # No one else available, ring again on same operator
+        operator["state"] = "ringing"
+        operator["call"] = rejected_call
+        print(f"Call {rejected_call} ringing for operator {operator_id}")
 
     def do_hangup(self, arg):
         """Finish a call"""
