@@ -110,31 +110,28 @@ class CallCenter(cmd.Cmd):
     def do_hangup(self, arg):
         """Finish a call"""
         call_id = arg.strip()
-
         if not call_id:
             return
 
         # Check operators
         for operator_id, operator in self.operators.items():
             if operator["call"] == call_id:
-                previous_state = operator["state"]
+                state = operator["state"]
 
-                if previous_state == "busy":
-                    operator["state"] = "available"
-                    operator["call"] = None
+                operator["state"] = "available"
+                operator["call"] = None
+
+                if state == "busy":
                     print(f"Call {call_id} finished and operator {operator_id} available")
-
-                    # Only now the queue can move
-                    if self.queue:
-                        next_call = self.queue.popleft()
-                        operator["state"] = "ringing"
-                        operator["call"] = next_call
-                        print(f"Call {next_call} ringing for operator {operator_id}")
-
-                elif previous_state == "ringing":
-                    operator["state"] = "available"
-                    operator["call"] = None
+                else:  # ringing
                     print(f"Call {call_id} missed")
+
+                # if operator becomes available and queue exists, pull next call
+                if self.queue:
+                    next_call = self.queue.popleft()
+                    operator["state"] = "ringing"
+                    operator["call"] = next_call
+                    print(f"Call {next_call} ringing for operator {operator_id}")
 
                 return
 
