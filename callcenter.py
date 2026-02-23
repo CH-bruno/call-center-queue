@@ -73,7 +73,39 @@ class CallCenter(cmd.Cmd):
 
     def do_hangup(self, arg):
         """Finish a call"""
-        pass
+        call_id = arg.strip()
+
+        if not call_id:
+            return
+
+        # Check operators
+        for operator_id, operator in self.operators.items():
+            if operator["call"] == call_id:
+                previous_state = operator["state"]
+
+                if previous_state == "busy":
+                    operator["state"] = "available"
+                    operator["call"] = None
+                    print(f"Call {call_id} finished and operator {operator_id} available")
+
+                    # Only now the queue can move
+                    if self.queue:
+                        next_call = self.queue.popleft()
+                        operator["state"] = "ringing"
+                        operator["call"] = next_call
+                        print(f"Call {next_call} ringing for operator {operator_id}")
+
+                elif previous_state == "ringing":
+                    operator["state"] = "available"
+                    operator["call"] = None
+                    print(f"Call {call_id} missed")
+
+                return
+
+        # Call might be in queue
+        if call_id in self.queue:
+            self.queue.remove(call_id)
+            print(f"Call {call_id} missed")
 
     def do_exit(self, arg):
         """Exit the application"""
