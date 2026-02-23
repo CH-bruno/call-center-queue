@@ -31,7 +31,24 @@ class CallCenter(cmd.Cmd):
 
     def do_call(self, arg):
         """Receive a call"""
-        pass
+        call_id = arg.strip()
+
+        if not call_id:
+            return
+
+        print(f"Call {call_id} received")
+
+        # Try to find an available operator
+        for operator_id, operator in self.operators.items():
+            if operator["state"] == "available":
+                operator["state"] = "ringing"
+                operator["call"] = call_id
+                print(f"Call {call_id} ringing for operator {operator_id}")
+                return
+
+        # No operators available, put call in queue
+        self.queue.append(call_id)
+        print(f"Call {call_id} waiting in queue")
 
     def do_answer(self, arg):
         """Operator answers a call"""
