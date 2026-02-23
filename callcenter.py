@@ -52,7 +52,20 @@ class CallCenter(cmd.Cmd):
 
     def do_answer(self, arg):
         """Operator answers a call"""
-        pass
+        operator_id = arg.strip()
+
+        if operator_id not in self.operators:
+            return
+
+        operator = self.operators[operator_id]
+
+        if operator["state"] != "ringing":
+            return
+
+        call_id = operator["call"]
+        operator["state"] = "busy"
+
+        print(f"Call {call_id} answered by operator {operator_id}")
 
     def do_reject(self, arg):
         """Operator rejects a call"""
