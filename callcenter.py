@@ -1,149 +1,159 @@
 import cmd
 from collections import deque
 
-
-class CallCenter(cmd.Cmd):
+class CallCenterCore:
     """
-    Simulated Call Center Queue Application
-    Commands:
-        call <id>
-        answer <operator_id>
-        reject <operator_id>
-        hangup <call_id>
+    Core business logic for the Call Center.
+    No input/output handling here.
     """
-
-    prompt = "(callcenter) "
 
     def __init__(self):
-        super().__init__()
-
-        # Operators state:
-        # Each operator has:
-        # - state: available | ringing | busy
-        # - call: current call id or None
         self.operators = {
             "A": {"state": "available", "call": None},
-            "B": {"state": "available", "call": None}
+            "B": {"state": "available", "call": None},
         }
-
-        # Queue for waiting calls
         self.queue = deque()
 
-    def do_call(self, arg):
-        """Receive a call"""
-        call_id = arg.strip()
+    # ---------- Core actions ----------
 
-        if not call_id:
-            return
+    def call(self, call_id):
+        output = []
 
-        print(f"Call {call_id} received")
+        output.append(f"Call {call_id} received")
 
-        # Try to find an available operator
         for operator_id, operator in self.operators.items():
             if operator["state"] == "available":
                 operator["state"] = "ringing"
                 operator["call"] = call_id
-                print(f"Call {call_id} ringing for operator {operator_id}")
-                return
+                output.append(f"Call {call_id} ringing for operator {operator_id}")
+                return output
 
-        # No operators available, put call in queue
         self.queue.append(call_id)
-        print(f"Call {call_id} waiting in queue")
+        output.append(f"Call {call_id} waiting in queue")
+        return output
 
-    def do_answer(self, arg):
-        """Operator answers a call"""
-        operator_id = arg.strip()
+    def answer(self, operator_id):
+        output = []
 
         if operator_id not in self.operators:
-            return
+            return output
 
         operator = self.operators[operator_id]
-
         if operator["state"] != "ringing":
-            return
+            return output
 
         call_id = operator["call"]
         operator["state"] = "busy"
+        output.append(f"Call {call_id} answered by operator {operator_id}")
+        return output
 
-        print(f"Call {call_id} answered by operator {operator_id}")
-
-    def do_reject(self, arg):
-        """Operator rejects a call"""
-        operator_id = arg.strip()
+    def reject(self, operator_id):
+        output = []
 
         if operator_id not in self.operators:
-            return
+            return output
 
         operator = self.operators[operator_id]
-
         if operator["state"] != "ringing":
-            return
+            return output
 
         rejected_call = operator["call"]
-
-        # Reject current call
         operator["state"] = "available"
         operator["call"] = None
-        print(f"Call {rejected_call} rejected by operator {operator_id}")
 
-        # Priority: deliver next call from queue
+        output.append(f"Call {rejected_call} rejected by operator {operator_id}")
+
+        # Priority: queue
         if self.queue:
             next_call = self.queue.popleft()
             operator["state"] = "ringing"
             operator["call"] = next_call
-            print(f"Call {next_call} ringing for operator {operator_id}")
-            return
+            output.append(f"Call {next_call} ringing for operator {operator_id}")
+            return output
 
-        # Try another available operator
+        # Try another operator
         for other_id, other_operator in self.operators.items():
             if other_id != operator_id and other_operator["state"] == "available":
                 other_operator["state"] = "ringing"
                 other_operator["call"] = rejected_call
-                print(f"Call {rejected_call} ringing for operator {other_id}")
-                return
+                output.append(f"Call {rejected_call} ringing for operator {other_id}")
+                return output
 
-        # No one else available, ring again on same operator
+        # Ring again on same operator
         operator["state"] = "ringing"
         operator["call"] = rejected_call
-        print(f"Call {rejected_call} ringing for operator {operator_id}")
+        output.append(f"Call {rejected_call} ringing for operator {operator_id}")
+        return output
 
-    def do_hangup(self, arg):
-        """Finish a call"""
-        call_id = arg.strip()
-        if not call_id:
-            return
+    def hangup(self, call_id):
+        output = []
 
-        # Check operators
         for operator_id, operator in self.operators.items():
             if operator["call"] == call_id:
                 state = operator["state"]
-
                 operator["state"] = "available"
                 operator["call"] = None
 
                 if state == "busy":
-                    print(f"Call {call_id} finished and operator {operator_id} available")
-                else:  # ringing
-                    print(f"Call {call_id} missed")
+                    output.append(
+                        f"Call {call_id} finished and operator {operator_id} available"
+                    )
+                else:
+                    output.append(f"Call {call_id} missed")
 
-                # if operator becomes available and queue exists, pull next call
                 if self.queue:
                     next_call = self.queue.popleft()
                     operator["state"] = "ringing"
                     operator["call"] = next_call
-                    print(f"Call {next_call} ringing for operator {operator_id}")
+                    output.append(f"Call {next_call} ringing for operator {operator_id}")
 
-                return
+                return output
 
-        # Call might be in queue
         if call_id in self.queue:
             self.queue.remove(call_id)
-            print(f"Call {call_id} missed")
+            output.append(f"Call {call_id} missed")
+
+        return output
+
+    # ---------- Command dispatcher ----------
+
+    def handle(self, command: str):
+        parts = command.strip().split()
+        if not parts:
+            return []
+
+        cmd = parts[0]
+        arg = parts[1] if len(parts) > 1 else None
+
+        if cmd == "call" and arg:
+            return self.call(arg)
+        if cmd == "answer" and arg:
+            return self.answer(arg)
+        if cmd == "reject" and arg:
+            return self.reject(arg)
+        if cmd == "hangup" and arg:
+            return self.hangup(arg)
+
+        return []
+
+
+# ---------- CLI Interface ----------
+
+class CallCenterCLI(cmd.Cmd):
+    prompt = "(callcenter) "
+
+    def __init__(self):
+        super().__init__()
+        self.core = CallCenterCore()
+
+    def default(self, line):
+        responses = self.core.handle(line)
+        for r in responses:
+            print(r)
 
     def do_exit(self, arg):
-        """Exit the application"""
         return True
 
 
 if __name__ == "__main__":
-    CallCenter().cmdloop()
+    CallCenterCLI().cmdloop()
