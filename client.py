@@ -1,22 +1,18 @@
-import json
 import socket
+import json
 
 HOST = "127.0.0.1"
 PORT = 5678
 
 
-def parse_command(line):
-    parts = line.strip().split()
+def to_json(command):
+    parts = command.split()
     if len(parts) != 2:
         return None
 
-    cmd, value = parts
-    if cmd not in ("call", "answer", "reject", "hangup"):
-        return None
-
     return json.dumps({
-        "command": cmd,
-        "id": value
+        "command": parts[0],
+        "id": parts[1]
     })
 
 
@@ -26,32 +22,17 @@ def main():
         print("Connected to Call Center Server")
 
         while True:
-            try:
-                line = input()
-                if not line:
-                    continue
+            command = input()
+            payload = to_json(command)
 
-                json_cmd = parse_command(line)
-                if not json_cmd:
-                    continue
+            if not payload:
+                continue
 
-                s.sendall((json_cmd + "\n").encode())
+            s.sendall((payload + "\n").encode())
 
-                s.settimeout(0.2)
-                try:
-                    while True:
-                        data = s.recv(4096)
-                        if not data:
-                            break
-
-                        response = json.loads(data.decode())
-                        print(response["response"])
-                except socket.timeout:
-                    pass
-
-            except KeyboardInterrupt:
-                print("\nDisconnected")
-                break
+            data = s.recv(4096)
+            response = json.loads(data.decode())
+            print(response["response"])
 
 
 if __name__ == "__main__":
