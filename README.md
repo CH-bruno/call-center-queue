@@ -5,29 +5,6 @@ It manages incoming calls, operators, and a waiting queue, following the exact b
 
 The application was developed to strictly match the expected outputs of the test scenarios described in the assignment.
 
----
-
-## Requirements
-
-- Python 3.x  
-- No external libraries required
-
----
-
-## How to Run
-
-Clone the repository and execute:
-
-```bash
-python callcenter.py
-```
-
-You will enter an interactive prompt:
-
-```
-(callcenter)
-```
-
 ### Available Commands
 
 - `call <id>`: Starts a new incoming call.

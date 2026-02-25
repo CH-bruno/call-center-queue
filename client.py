@@ -3,10 +3,8 @@ import json
 import select
 import sys
 
-
 HOST = "127.0.0.1"
 PORT = 5678
-
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
