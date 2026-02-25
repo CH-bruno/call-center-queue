@@ -37,7 +37,7 @@ class CallCenterCore:
 
         return responses
 
-    # ---------- Core actions ----------
+    # Core actions 
 
     def _call(self, call_id):
         output = []

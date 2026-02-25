@@ -78,17 +78,78 @@ After rejection, calls are delivered in the following priority order:
 
 ## Environment Validation
 
-Although development was done on Windows, the application was validated in a clean CentOS environment using Docker with WSL 2.
+Although the development was initially carried out on Windows, the final application was fully validated inside a clean CentOS environment using Docker with WSL 2 backend, ensuring compliance with the required production-like infrastructure.
 
 ### Validation Environment
-- CentOS Stream 9 (official image from quay.io)
+- Base Image: quay.io/centos/centos:stream9 (official CentOS Stream 9)
 
-### Commands Used
+- Container Name: centos-callcenter
+
+- Ports Exposed:
+
+        2222 → SSH access to the container
+
+        5678 → Call Center application communication
+
+### SSH Configuration
+To meet the requirement of a CentOS system accessible via SSH, the container was configured with SSH access on port 2222.
+
+Starting SSH Inside the Container.If SSH is not running, follow these steps to enable it:
+
+#### Commands Used to Configure SSH
+
 
 ```bash
-docker run -it quay.io/centos/centos:stream9 /bin/bash
-dnf install -y python3 git
+# 1. Enter the container
+docker exec -it centos-callcenter /bin/bash
+
+# 2. Install OpenSSH server (if not already installed)
+dnf install -y openssh-server
+
+# 3. Generate host keys
+ssh-keygen -A
+
+# 4. Set root password
+echo 'root:senha123' | chpasswd
+
+# 5. Configure SSH to allow root login
+sed -i 's/^#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
+sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# 6. Start SSH service
+/usr/sbin/sshd
+
+# 7. Verify SSH is running
+ps aux | grep sshd
+# Expected output: sshd: /usr/sbin/sshd [listener]
+
+# 8. Exit the container
+exit
+```
+
+### Commands Used to Run Project
+
+
+```bash
+# 1. Run the CentOS container with port mapping
+docker run -it -d --name centos-callcenter -p 2222:22 -p 5678:5678 quay.io/centos/centos:stream9
+
+# 2. Access the container via SSH
+ssh root@localhost -p 2222
+# Password: senha123
+
+# 3. Install dependencies
+dnf install -y python3 python3-pip git
+pip3 install twisted
+
+# 4. Clone the repository
 git clone https://github.com/CH-bruno/call-center-queue.git
 cd call-center-queue
-python3 callcenter.py
+
+# 5. Run the server (keep this terminal open)
+python3 server.py
+
+# 6. In a second SSH session, run the client
+python3 client.py
 ```
