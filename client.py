@@ -5,15 +5,11 @@ HOST = "127.0.0.1"
 PORT = 5678
 
 
-def to_json(command):
-    parts = command.split()
+def to_json(cmd):
+    parts = cmd.split()
     if len(parts) != 2:
         return None
-
-    return json.dumps({
-        "command": parts[0],
-        "id": parts[1]
-    })
+    return json.dumps({"command": parts[0], "id": parts[1]})
 
 
 def main():
@@ -24,7 +20,6 @@ def main():
         while True:
             command = input()
             payload = to_json(command)
-
             if not payload:
                 continue
 
