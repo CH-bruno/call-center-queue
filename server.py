@@ -5,17 +5,13 @@ import json
 
 class CallCenterProtocol(protocol.Protocol):
     def dataReceived(self, data):
-        try:
-            message = data.decode().strip()
-            responses = self.factory.core.handle(message)
+        message = data.decode().strip()
 
-            for line in responses:
-                response = json.dumps({"response": line})
-                self.transport.write((response + "\n").encode())
+        responses = self.factory.core.handle(message)
 
-        except Exception as e:
-            error = json.dumps({"response": f"ERROR: {e}"})
-            self.transport.write((error + "\n").encode())
+        for line in responses:
+            payload = json.dumps({"response": line})
+            self.transport.write((payload + "\n").encode())
 
 
 class CallCenterFactory(protocol.Factory):
@@ -23,11 +19,12 @@ class CallCenterFactory(protocol.Factory):
         self.core = CallCenterCore()
 
     def buildProtocol(self, addr):
-        return CallCenterProtocol()
+        proto = CallCenterProtocol()
+        proto.factory = self   # 🔥 força a ligação (à prova de erro)
+        return proto
 
 
 if __name__ == "__main__":
-    port = 5678
-    print(f"Call Center Server running on port {port}")
-    reactor.listenTCP(port, CallCenterFactory())
+    print("Call Center Server running on port 5678")
+    reactor.listenTCP(5678, CallCenterFactory())
     reactor.run()
