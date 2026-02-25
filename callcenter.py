@@ -1,10 +1,12 @@
-import cmd
+import json
 from collections import deque
+
 
 class CallCenterCore:
     """
     Core business logic for the Call Center.
-    No input/output handling here.
+    Receives commands as JSON strings and returns a list of responses.
+    No I/O, no networking, no CLI code here.
     """
 
     def __init__(self):
@@ -14,10 +16,36 @@ class CallCenterCore:
         }
         self.queue = deque()
 
+    # ---------- Public entry point ----------
+
+    def handle(self, json_command: str):
+        responses = []
+
+        try:
+            data = json.loads(json_command)
+        except json.JSONDecodeError:
+            return responses
+
+        command = data.get("command")
+        value = data.get("id")
+
+        if command == "call":
+            responses.extend(self._call(value))
+        elif command == "answer":
+            responses.extend(self._answer(value))
+        elif command == "reject":
+            responses.extend(self._reject(value))
+        elif command == "hangup":
+            responses.extend(self._hangup(value))
+
+        return responses
+
     # ---------- Core actions ----------
 
-    def call(self, call_id):
+    def _call(self, call_id):
         output = []
+        if not call_id:
+            return output
 
         output.append(f"Call {call_id} received")
 
@@ -25,67 +53,73 @@ class CallCenterCore:
             if operator["state"] == "available":
                 operator["state"] = "ringing"
                 operator["call"] = call_id
-                output.append(f"Call {call_id} ringing for operator {operator_id}")
+                output.append(
+                    f"Call {call_id} ringing for operator {operator_id}"
+                )
                 return output
 
         self.queue.append(call_id)
         output.append(f"Call {call_id} waiting in queue")
         return output
 
-    def answer(self, operator_id):
+    def _answer(self, operator_id):
         output = []
+        operator = self.operators.get(operator_id)
 
-        if operator_id not in self.operators:
-            return output
-
-        operator = self.operators[operator_id]
-        if operator["state"] != "ringing":
+        if not operator or operator["state"] != "ringing":
             return output
 
         call_id = operator["call"]
         operator["state"] = "busy"
-        output.append(f"Call {call_id} answered by operator {operator_id}")
+        output.append(
+            f"Call {call_id} answered by operator {operator_id}"
+        )
         return output
 
-    def reject(self, operator_id):
+    def _reject(self, operator_id):
         output = []
+        operator = self.operators.get(operator_id)
 
-        if operator_id not in self.operators:
-            return output
-
-        operator = self.operators[operator_id]
-        if operator["state"] != "ringing":
+        if not operator or operator["state"] != "ringing":
             return output
 
         rejected_call = operator["call"]
         operator["state"] = "available"
         operator["call"] = None
 
-        output.append(f"Call {rejected_call} rejected by operator {operator_id}")
+        output.append(
+            f"Call {rejected_call} rejected by operator {operator_id}"
+        )
 
         # Priority: queue
         if self.queue:
             next_call = self.queue.popleft()
             operator["state"] = "ringing"
             operator["call"] = next_call
-            output.append(f"Call {next_call} ringing for operator {operator_id}")
+            output.append(
+                f"Call {next_call} ringing for operator {operator_id}"
+            )
             return output
 
         # Try another operator
-        for other_id, other_operator in self.operators.items():
-            if other_id != operator_id and other_operator["state"] == "available":
-                other_operator["state"] = "ringing"
-                other_operator["call"] = rejected_call
-                output.append(f"Call {rejected_call} ringing for operator {other_id}")
+        for other_id, other in self.operators.items():
+            if other_id != operator_id and other["state"] == "available":
+                other["state"] = "ringing"
+                other["call"] = rejected_call
+                output.append(
+                    f"Call {rejected_call} ringing for operator {other_id}"
+                )
                 return output
 
         # Ring again on same operator
         operator["state"] = "ringing"
         operator["call"] = rejected_call
-        output.append(f"Call {rejected_call} ringing for operator {operator_id}")
+        output.append(
+            f"Call {rejected_call} ringing for operator {operator_id}"
+        )
         return output
 
-    def hangup(self, call_id):
+    def _hangup(self, call_id):
         output = []
 
         for operator_id, operator in self.operators.items():
@@ -105,7 +139,9 @@ class CallCenterCore:
                     next_call = self.queue.popleft()
                     operator["state"] = "ringing"
                     operator["call"] = next_call
-                    output.append(f"Call {next_call} ringing for operator {operator_id}")
+                    output.append(
+                        f"Call {next_call} ringing for operator {operator_id}"
+                    )
 
                 return output
 
@@ -114,46 +150,3 @@ class CallCenterCore:
             output.append(f"Call {call_id} missed")
 
         return output
-
-    # ---------- Command dispatcher ----------
-
-    def handle(self, command: str):
-        parts = command.strip().split()
-        if not parts:
-            return []
-
-        cmd = parts[0]
-        arg = parts[1] if len(parts) > 1 else None
-
-        if cmd == "call" and arg:
-            return self.call(arg)
-        if cmd == "answer" and arg:
-            return self.answer(arg)
-        if cmd == "reject" and arg:
-            return self.reject(arg)
-        if cmd == "hangup" and arg:
-            return self.hangup(arg)
-
-        return []
-
-
-# ---------- CLI Interface ----------
-
-class CallCenterCLI(cmd.Cmd):
-    prompt = "(callcenter) "
-
-    def __init__(self):
-        super().__init__()
-        self.core = CallCenterCore()
-
-    def default(self, line):
-        responses = self.core.handle(line)
-        for r in responses:
-            print(r)
-
-    def do_exit(self, arg):
-        return True
-
-
-if __name__ == "__main__":
-    CallCenterCLI().cmdloop()

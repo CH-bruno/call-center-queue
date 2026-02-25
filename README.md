@@ -92,6 +92,3 @@ git clone https://github.com/CH-bruno/call-center-queue.git
 cd call-center-queue
 python3 callcenter.py
 ```
-
-### Notes
-This implementation prioritizes correctness, clarity, and strict adherence to the provided requirements over additional features or optimizations.
