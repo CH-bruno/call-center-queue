@@ -1,46 +1,46 @@
 import socket
 import json
 
+
 HOST = "127.0.0.1"
 PORT = 5678
-
-
-def to_json(cmd):
-    parts = cmd.strip().split()
-    if len(parts) != 2:
-        return None
-    return json.dumps({"command": parts[0], "id": parts[1]})
 
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
-        print("Connected to Call Center Server")
+        file = s.makefile()
 
-        buffer = ""
+        # Mensagem inicial
+        print(json.loads(file.readline())["response"])
 
         while True:
-            command = input()
-            payload = to_json(command)
-            if not payload:
-                continue
+            try:
+                command = input()
+                if not command:
+                    continue
 
-            s.sendall((payload + "\n").encode())
+                payload = {
+                    "command": command.split()[0],
+                    "id": command.split()[1] if len(command.split()) > 1 else None
+                }
 
-            # 🔥 Lê respostas linha por linha
-            while True:
-                data = s.recv(1024).decode()
-                buffer += data
+                s.sendall(json.dumps(payload).encode() + b"\n")
 
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    response = json.loads(line)
-                    print(response["response"])
+                # Ler respostas do servidor
+                while True:
+                    s.settimeout(0.2)
+                    try:
+                        line = file.readline()
+                        if not line:
+                            break
+                        print(json.loads(line)["response"])
+                    except socket.timeout:
+                        break
 
-                if not data:
-                    break
-                if s.recv(1, socket.MSG_PEEK) == b"":
-                    break
+            except KeyboardInterrupt:
+                print("\nDisconnected")
+                break
 
 
 if __name__ == "__main__":
