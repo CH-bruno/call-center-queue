@@ -3,8 +3,8 @@ from callcenter import CallCenterCore
 
 
 class CallCenterProtocol(protocol.Protocol):
-    def connectionMade(self):
-        self.transport.write(b"Connected to Call Center Server\n")
+    def __init__(self, factory):
+        self.factory = factory
 
     def dataReceived(self, data):
         command = data.decode().strip()
@@ -22,7 +22,7 @@ class CallCenterFactory(protocol.Factory):
         self.core = CallCenterCore()
 
     def buildProtocol(self, addr):
-        return CallCenterProtocol()
+        return CallCenterProtocol(self)
 
 
 if __name__ == "__main__":
