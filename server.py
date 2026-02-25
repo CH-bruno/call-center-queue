@@ -1,19 +1,21 @@
-import json
 from twisted.internet import reactor, protocol
 from callcenter import CallCenterCore
+import json
 
 
 class CallCenterProtocol(protocol.Protocol):
     def dataReceived(self, data):
-        message = data.decode().strip()
-        if not message:
-            return
+        try:
+            message = data.decode().strip()
+            responses = self.factory.core.handle(message)
 
-        responses = self.factory.core.handle(message)
+            for line in responses:
+                response = json.dumps({"response": line})
+                self.transport.write((response + "\n").encode())
 
-        for line in responses:
-            response = json.dumps({"response": line})
-            self.transport.write((response + "\n").encode())
+        except Exception as e:
+            error = json.dumps({"response": f"ERROR: {e}"})
+            self.transport.write((error + "\n").encode())
 
 
 class CallCenterFactory(protocol.Factory):
